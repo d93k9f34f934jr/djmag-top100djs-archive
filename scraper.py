@@ -5,6 +5,7 @@ import os
 import re
 from bs4 import BeautifulSoup
 import datetime
+from urllib.parse import unquote
 
 def scrape_dj_mag_json(year_to_scrape):
     """Scrapes DJ Mag Top 100 for a specific year using the JSON-LD data.
@@ -34,7 +35,8 @@ def scrape_dj_mag_json(year_to_scrape):
         try:
             position = item.get('position')
             dj_url = item.get('url')
-            dj_name = dj_url.split('/')[-1].replace('-', ' ').title()
+            name_slug = dj_url.split('/')[-1]
+            dj_name = unquote(name_slug).replace('-', ' ').title()
             year_from_url = int(dj_url.split('/')[-3])
             
             if year_from_url == year_to_scrape:
@@ -58,7 +60,6 @@ def scrape_dj_mag_html(year_to_scrape):
     soup = BeautifulSoup(response.text, 'html.parser')
     djs = []
     
-    # Regex to find links like /top100djs/2008/1/armin-van-buuren
     dj_url_pattern = re.compile(r'^/top100djs/(\d{4})/(\d{1,3})/.+$')
     
     found_djs = set()
@@ -70,7 +71,8 @@ def scrape_dj_mag_html(year_to_scrape):
         if match:
             year = int(match.group(1))
             rank = int(match.group(2))
-            name = href.split('/')[-1].replace('-', ' ').title()
+            name_slug = href.split('/')[-1]
+            name = unquote(name_slug).replace('-', ' ').title()
 
             if year == year_to_scrape:
                 found_djs.add((rank, name))
@@ -79,7 +81,6 @@ def scrape_dj_mag_html(year_to_scrape):
         print(f"Could not find any DJ links matching the required pattern on {url}.")
         return []
 
-    # Convert set of tuples to a sorted list of dictionaries
     for rank, name in sorted(list(found_djs)):
         djs.append({'year': year_to_scrape, 'rank': rank, 'name': name})
         
@@ -117,7 +118,6 @@ def main():
             year_djs = scrape_dj_mag_html(year)
 
         if year_djs:
-            # Ensure ranks are correct by taking the first 100
             year_djs = sorted(year_djs, key=lambda x: x['rank'])[:100]
             yearly_filename = os.path.join(output_dir, f"{year}.csv")
             write_csv(yearly_filename, year_djs)
