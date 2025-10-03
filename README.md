@@ -8,7 +8,8 @@ The scraped data is stored in the `djmag_rankings/` directory.
 
 ## Automation
 
-This repository uses GitHub Actions to automatically run the scraper script. This ensures the data stays up-to-date with the latest poll results. The workflow will automatically commit any updated CSV files back to the repository.
+This repository contains a GitHub Actions workflow to update the data. You can run this workflow manually from the Actions tab to fetch the latest poll results. The workflow will then automatically commit the updated CSV files back to the repository.
+
 
 ## Manual Usage
 
