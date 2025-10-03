@@ -1,0 +1,47 @@
+name: Scrape DJ Mag Top 100
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: "0 8 * * *" # Runs at 8:00 AM UTC every day
+
+jobs:
+  scrape-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Grant permission to write to the repository
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push changes
+        run: |
+          # Add all generated CSV files from the output directory
+          git add djmag_rankings/*.csv
+          
+          # Check if there are staged changes
+          if git diff --staged --quiet; then
+            echo "No changes to the DJ list."
+          else
+            echo "Detected changes, committing and pushing..."
+            git commit -m "feat: update DJ Mag Top 100 lists"
+            git push
+          fi
