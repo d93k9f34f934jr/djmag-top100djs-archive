@@ -2,8 +2,6 @@ name: Scrape DJ Mag Top 100
 
 on:
   workflow_dispatch: # Allows manual triggering
-  schedule:
-    - cron: "0 8 * * *" # Runs at 8:00 AM UTC every day
 
 jobs:
   scrape-and-commit:
