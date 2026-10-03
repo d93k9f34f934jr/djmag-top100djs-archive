@@ -1,7 +1,32 @@
 name: Scrape DJ Mag Top 100
 
 on:
-  workflow_dispatch: # Allows manual triggering
+  schedule:
+    # Monthly check: heals incomplete years (e.g. years where some entries
+    # were missed) and keeps the archive fresh.
+    - cron: '0 9 1 * *'
+    # Daily in October: DJ Mag announces the poll results in October.
+    - cron: '0 9 * 10 *'
+  workflow_dispatch:
+    inputs:
+      years:
+        description: 'Comma-separated years to (re)scrape, e.g. 2004,2007. Leave empty for incremental update.'
+        required: false
+        default: ''
+      force:
+        description: 'Overwrite existing CSVs even when the fresh scrape found less data'
+        type: boolean
+        required: false
+        default: false
+      all:
+        description: 'Re-scrape every year (full refresh), not just incomplete ones'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: scrape-djmag
+  cancel-in-progress: false
 
 jobs:
   scrape-and-commit:
@@ -13,9 +38,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -23,19 +49,25 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run scraper
-        run: python scraper.py
-
-      - name: Configure Git
+        env:
+          SCRAPE_YEARS: ${{ inputs.years }}
+          SCRAPE_FORCE: ${{ inputs.force }}
+          SCRAPE_ALL: ${{ inputs.all }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          args=""
+          if [ -n "$SCRAPE_YEARS" ]; then args="$args --years $SCRAPE_YEARS"; fi
+          if [ "$SCRAPE_FORCE" = "true" ]; then args="$args --force"; fi
+          if [ "$SCRAPE_ALL" = "true" ]; then args="$args --all"; fi
+          # shellcheck disable=SC2086
+          python scraper.py $args
 
       - name: Commit and push changes
         run: |
-          # Add all generated CSV files from the output directory
-          git add djmag_rankings/*.csv
-          
-          # Check if there are staged changes
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A djmag_rankings
+
           if git diff --staged --quiet; then
             echo "No changes to the DJ list."
           else
